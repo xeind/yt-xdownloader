@@ -1,0 +1,37 @@
+# Alternative Dockerfile using Python base image
+FROM python:3.11-slim as python-base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install yt-dlp
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install yt-dlp
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+WORKDIR /app
+
+# Copy backend files
+COPY backend/package.json .
+COPY backend/bun.lockb .
+
+# Install dependencies
+RUN bun install
+
+# Copy source code
+COPY backend/ .
+
+# Create downloads directory
+RUN mkdir -p downloads
+
+# Expose port
+EXPOSE 3001
+
+# Start the server
+CMD ["bun", "run", "start"]
