@@ -1,45 +1,39 @@
-# Use Bun runtime
-FROM oven/bun:1 as base
-
-# Install system dependencies and Python 3.11 (more stable for yt-dlp)
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python 3.11 specifically to avoid distutils issues
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3.11-dev \
-    python3.11-distutils \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create symlinks for python3 and pip3 to use 3.11
-RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
-    ln -sf /usr/bin/pip3.11 /usr/bin/pip3
-
-# Install latest yt-dlp
-RUN pip3 install --no-cache-dir -U yt-dlp --break-system-packages
+# Build frontend
+FROM node:18-alpine as frontend-build
 
 WORKDIR /app
 
-# Copy backend files
-COPY backend/package.json .
-COPY backend/bun.lock .
+# Copy package files
+COPY package.json ./
+COPY bun.lock ./
+
+# Install bun
+RUN npm install -g bun
 
 # Install dependencies
 RUN bun install
 
-# Copy source code
-COPY backend/ .
+# Copy source code (exclude backend)
+COPY src ./src
+COPY public ./public
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tsconfig*.json ./
+COPY components.json ./
+COPY .env.production ./
 
-# Create downloads directory
-RUN mkdir -p downloads
+# Build the app
+RUN bun run build
 
-# Expose port
-EXPOSE 3001
+# Serve with nginx
+FROM nginx:alpine
 
-# Start the server
-CMD ["bun", "run", "start"]
+# Copy built frontend
+COPY --from=frontend-build /app/dist /usr/share/nginx/html
+
+# Copy nginx config
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
