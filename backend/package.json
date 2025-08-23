@@ -1,0 +1,23 @@
+{
+  "name": "yt-downloader-backend",
+  "version": "1.0.0",
+  "module": "index.ts",
+  "scripts": {
+    "start": "bun run index.ts",
+    "dev": "bun run --watch index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.9.4"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

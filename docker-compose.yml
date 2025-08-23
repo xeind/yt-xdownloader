@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - ./downloads:/app/downloads
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Cleanup service that runs daily
+  cleanup:
+    image: alpine:latest
+    volumes:
+      - ./downloads:/downloads
+    command: >
+      sh -c "
+        echo 'Setting up daily cleanup...'
+        while true; do
+          echo '🧹 Running cleanup at $(date)'
+          find /downloads -mindepth 1 -mtime +1 -exec rm -rf {} \; 2>/dev/null || true
+          echo '✅ Cleanup completed'
+          sleep 86400
+        done
+      "
+    restart: unless-stopped
+
+volumes:
+  downloads:

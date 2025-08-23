@@ -1,0 +1,5 @@
+# Railway configuration
+packages = ["yt-dlp", "ffmpeg"]
+
+[start]
+cmd = "bun run start"
