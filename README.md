@@ -1,69 +1,66 @@
-# React + TypeScript + Vite
+# Home YouTube Video Extractor & Downloader
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Personal use YouTube downloader** - Fast, ad-free video and audio extraction for home use.
 
-Currently, two official plugins are available:
+Tired of ad-infested online YouTube to MP4 converters? This is a self-hosted solution using **yt-dlp** and **FFmpeg** to quickly download YouTube videos in decent quality.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
+- 🎥 Download YouTube videos in various formats
+- 🎵 Extract audio from videos  
+- 🚀 Fast downloads with yt-dlp
+- 🏠 Self-hosted - no ads, no tracking
+- 🗑️ Auto-cleanup (deletes files after 24 hours)
+- 📱 Modern React UI with progress tracking
 
-## Expanding the ESLint configuration
+## Quick Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
+- [Bun](https://bun.sh/) runtime
+- [Docker](https://docker.com/) (for easy deployment)
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Clone & Run
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+```bash
+# Clone the repo
+git clone <your-repo-url>
+cd yt-xdownloader
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Install frontend dependencies
+bun install
+
+# Install backend dependencies  
+cd backend
+bun install
+cd ..
+
+# Start development servers
+bun run dev          # Frontend (port 5173)
+cd backend && bun run start  # Backend (port 3001)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Docker Deployment (Recommended)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Access at http://localhost:5173
 ```
+
+## Usage
+
+1. Open the app in your browser
+2. Paste a YouTube URL
+3. Choose format (video/audio)
+4. Click download
+5. Files auto-delete after 24 hours
+
+## Tech Stack
+
+- **Frontend**: React 19 + TypeScript + Vite + SHADCN UI
+- **Backend**: Bun + Hono + yt-dlp + FFmpeg
+- **Deployment**: Docker + Nginx
+
+## Legal Notice
+
+This tool is for **personal use only**. Respect YouTube's Terms of Service and copyright laws. Only download content you have permission to download.

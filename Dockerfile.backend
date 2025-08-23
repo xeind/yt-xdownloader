@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python 3.11 specifically to avoid distutils issues
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-pip \
+    python3 \
+    python3-pip \
     python3.11-dev \
     python3.11-distutils \
     ffmpeg \
@@ -20,17 +20,14 @@ RUN apt-get update && apt-get install -y \
 RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
     ln -sf /usr/bin/pip3.11 /usr/bin/pip3
 
-# Upgrade pip and install setuptools
-RUN python3 -m pip install --upgrade pip setuptools wheel
-
 # Install yt-dlp
-RUN pip3 install yt-dlp
+RUN pip3 install --no-cache-dir -U yt-dlp --break-system-packages
 
 WORKDIR /app
 
 # Copy backend files
 COPY backend/package.json .
-COPY backend/bun.lockb .
+COPY backend/bun.lock .
 
 # Install dependencies
 RUN bun install
