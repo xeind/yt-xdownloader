@@ -68,7 +68,7 @@ const activeDownloads = new Map<
 >()
 
 // Ensure downloads directory exists
-const downloadsDir = join(process.cwd(), 'downloads')
+const downloadsDir = join(__dirname, 'downloads')
 if (!existsSync(downloadsDir)) {
   mkdirSync(downloadsDir, { recursive: true })
 }
@@ -182,35 +182,46 @@ app.post('/api/video/info', async (c) => {
 
           // For each resolution, pick the best format (prioritizing audio inclusion)
           for (const [resolution, formats] of formatsByResolution) {
-            // Sort by: 1) has audio, 2) is H.264, 3) higher bitrate
-            const sortedFormats = formats.sort((a: any, b: any) => {
-              // Prioritize formats with audio
-              if (a.hasAudio !== b.hasAudio) {
-                return b.hasAudio ? 1 : -1
-              }
-              
-              // Then prioritize H.264 (better compatibility)
-              const aIsH264 = a.vcodec && a.vcodec.includes('avc')
-              const bIsH264 = b.vcodec && b.vcodec.includes('avc')
-              if (aIsH264 !== bIsH264) {
-                return bIsH264 ? 1 : -1
-              }
-              
-              // For video-only formats, prefer MP4 over WebM for merging reliability
-              if (!a.hasAudio && !b.hasAudio) {
+            // Separate formats with audio from video-only formats
+            const withAudio = formats.filter((f) => f.hasAudio)
+            const videoOnly = formats.filter((f) => !f.hasAudio)
+
+            let selectedFormat
+
+            if (withAudio.length > 0) {
+              // Prefer pre-combined formats
+              selectedFormat = withAudio.sort((a: any, b: any) => {
+                // Prioritize H.264
+                const aIsH264 = a.vcodec && a.vcodec.includes('avc')
+                const bIsH264 = b.vcodec && b.vcodec.includes('avc')
+                if (aIsH264 !== bIsH264) {
+                  return bIsH264 ? 1 : -1
+                }
+                return (b.tbr || 0) - (a.tbr || 0)
+              })[0]
+            } else {
+              // Use video-only format (will need merging)
+              selectedFormat = videoOnly.sort((a: any, b: any) => {
+                // Prefer MP4 for better merging
                 if (a.ext === 'mp4' && b.ext !== 'mp4') return -1
                 if (b.ext === 'mp4' && a.ext !== 'mp4') return 1
-              }
-              
-              // Finally, prefer higher bitrate
-              return (b.tbr || 0) - (a.tbr || 0)
-            })
-            
-            // Add format info for debugging
-            const selectedFormat = sortedFormats[0]
-            console.log(`📊 ${resolution}: Selected format ${selectedFormat.format_id} (${selectedFormat.vcodec}, audio: ${selectedFormat.hasAudio}, ext: ${selectedFormat.ext})`)
-            
-            videoFormats.push(selectedFormat)
+
+                // Then prefer H.264
+                const aIsH264 = a.vcodec && a.vcodec.includes('avc')
+                const bIsH264 = b.vcodec && b.vcodec.includes('avc')
+                if (aIsH264 !== bIsH264) {
+                  return bIsH264 ? 1 : -1
+                }
+                return (b.tbr || 0) - (a.tbr || 0)
+              })[0]
+            }
+
+            if (selectedFormat) {
+              console.log(
+                `📊 ${resolution}: Selected format ${selectedFormat.format_id} (${selectedFormat.vcodec}, audio: ${selectedFormat.hasAudio}, ext: ${selectedFormat.ext})`
+              )
+              videoFormats.push(selectedFormat)
+            }
           }
 
           // Sort by resolution (highest first)
@@ -332,36 +343,24 @@ app.post('/api/video/download', async (c) => {
       '0'
     )
   } else {
-    // Video download - check if we need to merge audio
-    // For formats that already have audio, use them directly
-    // For video-only formats, use reliable merging
-    
+    // Video download with audio merging
     console.log(`📹 Video download - Format: ${format_id}`)
-    
-    // Enhanced format selection strategy for longer videos
-    // Try multiple approaches to ensure audio inclusion
-    const formatStrategies = [
-      `${format_id}+bestaudio[ext=m4a]/best`,     // Prefer m4a audio for MP4 compatibility
-      `${format_id}+bestaudio`,                   // Any best audio
-      `bestvideo[height<=${format_id.includes('1080') ? '1080' : format_id.includes('720') ? '720' : format_id.includes('480') ? '480' : '360'}]+bestaudio`,  // Fallback to best video+audio of that resolution
-      `best[height<=${format_id.includes('1080') ? '1080' : format_id.includes('720') ? '720' : format_id.includes('480') ? '480' : '360'}]`,              // Final fallback to pre-merged format
-    ]
-    
-    const formatString = formatStrategies.join('/')
-    
+
+    // Check if the selected format has audio already
+    // If it does, use it directly; if not, force merging
     ytdlpArgs.splice(
       3,
       0,
       '-f',
-      formatString,
+      `${format_id}+bestaudio/best`, // Try format+audio, fallback to best
       '--merge-output-format',
       'mp4',
-      '--postprocessor-args',
-      'ffmpeg:-c:v libx264 -c:a aac -movflags faststart'  // Ensure compatible encoding
+      '--abort-on-unavailable-fragment', // Fail rather than partial download
+      '--no-part' // Don't create partial files
     )
   }
 
-  console.log('yt-dlp command:', ytdlpArgs.join(' ')) // Debug log
+  console.log('🔧 Full yt-dlp command:', 'yt-dlp', ytdlpArgs.join(' '))
 
   const ytdlp = spawn('yt-dlp', ytdlpArgs)
   const download = activeDownloads.get(downloadId)!
@@ -392,39 +391,68 @@ app.post('/api/video/download', async (c) => {
   })
 
   ytdlp.stderr.on('data', (data) => {
-    console.error('yt-dlp stderr:', data.toString())
+    const errorOutput = data.toString()
+    console.error('⚠️ yt-dlp stderr:', errorOutput)
+
+    // Check for specific merging errors
+    if (
+      errorOutput.includes('Unable to merge formats') ||
+      errorOutput.includes('Requested format is not available') ||
+      errorOutput.includes('No video formats found')
+    ) {
+      console.error('🚨 Format merging failed, yt-dlp fell back to video-only')
+      download.error = 'Audio merging failed - video only downloaded'
+    }
   })
 
   ytdlp.on('close', (code) => {
+    console.log(`🔚 yt-dlp finished with exit code: ${code}`)
     if (code === 0) {
       download.status = 'completed'
       download.progress = 100
       try {
         const files = readdirSync(downloadDir)
+        console.log(`📁 Files in download directory:`, files)
         const downloadedFile = files.find((f) =>
           /\.(mp4|webm|mkv|m4a|opus|wav)$/i.test(f)
         )
         if (downloadedFile) {
+          console.log(`✅ Found downloaded file: ${downloadedFile}`)
           const filePath = join(downloadDir, downloadedFile)
-          
+
+          // Check if filename indicates video-only download (.f<num>)
+          if (
+            downloadedFile.includes('.f') &&
+            /\.f\d+\./.test(downloadedFile)
+          ) {
+            console.error(`🚨 Video-only download detected: ${downloadedFile}`)
+            download.error = 'Audio merging failed - got video-only file'
+            download.status = 'error'
+            return
+          }
+
           // If file is WebM, convert to MP4 for better compatibility
           if (downloadedFile.endsWith('.webm') && !audioOnly) {
             download.status = 'converting'
             console.log(`🔄 Converting WebM to MP4: ${downloadedFile}`)
-            
+
             const mp4FileName = downloadedFile.replace('.webm', '.mp4')
             const mp4FilePath = join(downloadDir, mp4FileName)
-            
+
             // Use FFmpeg to convert WebM to MP4 with compatible codecs
             const ffmpeg = spawn('ffmpeg', [
-              '-i', filePath,
-              '-c:v', 'libx264',     // Convert video to H.264
-              '-c:a', 'aac',         // Convert audio to AAC
-              '-movflags', '+faststart', // Optimize for streaming
-              '-y',                  // Overwrite output file
-              mp4FilePath
+              '-i',
+              filePath,
+              '-c:v',
+              'libx264', // Convert video to H.264
+              '-c:a',
+              'aac', // Convert audio to AAC
+              '-movflags',
+              '+faststart', // Optimize for streaming
+              '-y', // Overwrite output file
+              mp4FilePath,
             ])
-            
+
             ffmpeg.on('close', (ffmpegCode) => {
               if (ffmpegCode === 0) {
                 // Delete original WebM file and use MP4
@@ -444,7 +472,7 @@ app.post('/api/video/download', async (c) => {
                 download.status = 'completed'
               }
             })
-            
+
             ffmpeg.stderr.on('data', (data) => {
               console.log('FFmpeg:', data.toString())
             })
