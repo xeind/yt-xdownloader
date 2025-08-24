@@ -16,6 +16,8 @@ interface VideoFormat {
   filesize: number
   ext: string
   fps?: number
+  vcodec?: string
+  acodec?: string
   tbr?: number
   abr?: number
   format_note?: string
@@ -388,6 +390,26 @@ function App() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="secondary" className="bg-gray-600 text-gray-200">{format.resolution}</Badge>
                               <Badge variant="outline" className="border-gray-500 text-gray-300">{format.ext.toUpperCase()}</Badge>
+                              {format.vcodec && (
+                                <Badge variant="outline" className="border-blue-500 text-blue-300">
+                                  {format.vcodec.includes('avc') ? 'H.264' :
+                                    format.vcodec.includes('vp9') ? 'VP9' :
+                                      format.vcodec.includes('vp8') ? 'VP8' :
+                                        format.vcodec.includes('av01') ? 'AV1' :
+                                          format.vcodec.split('.')[0].toUpperCase()}
+                                </Badge>
+                              )}
+                              {format.hasAudio && format.acodec && (
+                                <Badge variant="outline" className="border-green-500 text-green-300">
+                                  {format.acodec.includes('mp4a') ? 'AAC' :
+                                    format.acodec.includes('opus') ? 'Opus' :
+                                      format.acodec.includes('vorbis') ? 'Vorbis' :
+                                        format.acodec.split('.')[0].toUpperCase()}
+                                </Badge>
+                              )}
+                              {!format.hasAudio && (
+                                <Badge variant="outline" className="border-red-500 text-red-300">No Audio</Badge>
+                              )}
                               {format.fps && (
                                 <Badge variant="outline" className="border-gray-500 text-gray-300">{format.fps}fps</Badge>
                               )}

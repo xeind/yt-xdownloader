@@ -330,7 +330,6 @@ app.post('/api/video/download', async (c) => {
   ]
 
   if (audioOnly) {
-    // Audio-only download
     ytdlpArgs.splice(
       3,
       0,
@@ -338,25 +337,26 @@ app.post('/api/video/download', async (c) => {
       'bestaudio',
       '--extract-audio',
       '--audio-format',
-      'mp3',
+      'mp3', // or 'aac'
       '--audio-quality',
       '0'
     )
   } else {
-    // Video download with audio merging
     console.log(`📹 Video download - Format: ${format_id}`)
 
-    // Check if the selected format has audio already
-    // If it does, use it directly; if not, force merging
     ytdlpArgs.splice(
       3,
       0,
       '-f',
-      `${format_id}+bestaudio/best`, // Try format+audio, fallback to best
-      '--merge-output-format',
+      `${format_id}+bestaudio/best[ext=mp4]`,
+      '--recode-video',
       'mp4',
-      '--abort-on-unavailable-fragment', // Fail rather than partial download
-      '--no-part' // Don't create partial files
+      '--audio-format',
+      'aac',
+      '--audio-quality',
+      '0',
+      '--no-abort-on-unavailable-fragments',
+      '--ignore-errors'
     )
   }
 
@@ -420,13 +420,29 @@ app.post('/api/video/download', async (c) => {
           console.log(`✅ Found downloaded file: ${downloadedFile}`)
           const filePath = join(downloadDir, downloadedFile)
 
-          // Check if filename indicates video-only download (.f<num>)
+          // Check if filename indicates wrong format type
           if (
             downloadedFile.includes('.f') &&
             /\.f\d+\./.test(downloadedFile)
           ) {
             console.error(`🚨 Video-only download detected: ${downloadedFile}`)
             download.error = 'Audio merging failed - got video-only file'
+            download.status = 'error'
+            return
+          }
+
+          // Check if we got audio-only when expecting video
+          if (
+            !audioOnly &&
+            (downloadedFile.includes('f251') ||
+              downloadedFile.includes('f140') ||
+              (downloadedFile.endsWith('.webm') &&
+                downloadedFile.includes('f25')))
+          ) {
+            console.error(
+              `🚨 Audio-only download detected when video was requested: ${downloadedFile}`
+            )
+            download.error = 'Got audio-only file instead of video'
             download.status = 'error'
             return
           }
