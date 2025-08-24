@@ -1,20 +1,22 @@
-# Home YouTube Video Extractor & Downloader
+# YouTube Downloader
 
-**Personal use YouTube downloader** - Fast, ad-free video and audio extraction for home use.
+**Personal project** - AI slop to quickly download YouTube videos on my own.
 
-Tired of ad-infested online YouTube to MP4 converters? This is a self-hosted solution using **yt-dlp** and **FFmpeg** to quickly download YouTube videos in decent quality.
+Fed up with ad-infested YouTube converters, so I threw together this yt-dlp wrapper to grab videos and audio without the BS.
 
 ## Features
-- 🎥 Download YouTube videos in various formats
-- 🎵 Extract audio from videos  
-- 🚀 Fast downloads with yt-dlp
-- 🏠 Self-hosted - no ads, no tracking
-- 🗑️ Auto-cleanup (deletes files after 24 hours)
-- 📱 Modern React UI with progress tracking
+
+- 🎥 Downloads videos (360p-1080p) with proper audio merging
+- 🎵 Audio-only extraction to MP3
+- 📋 Clipboard paste support
+- ⌨️ Global shortcuts (Ctrl+V to paste)
+- 🗑️ Auto-cleanup after 24 hours
+- 🎯 No ads, no tracking, just downloads
 
 ## Quick Setup
 
 ### Prerequisites
+
 - [Bun](https://bun.sh/) runtime
 - [Docker](https://docker.com/) (for easy deployment)
 
@@ -28,7 +30,7 @@ cd yt-xdownloader
 # Install frontend dependencies
 bun install
 
-# Install backend dependencies  
+# Install backend dependencies
 cd backend
 bun install
 cd ..
@@ -49,11 +51,10 @@ docker-compose up --build
 
 ## Usage
 
-1. Open the app in your browser
-2. Paste a YouTube URL
-3. Choose format (video/audio)
-4. Click download
-5. Files auto-delete after 24 hours
+1. Paste YouTube URL
+2. Pick resolution or audio-only
+3. Download starts automatically
+4. Files delete after 24h
 
 ## Tech Stack
 
@@ -63,4 +64,4 @@ docker-compose up --build
 
 ## Legal Notice
 
-This tool is for **personal use only**. Respect YouTube's Terms of Service and copyright laws. Only download content you have permission to download.
+Personal use only. Don't be a dick about copyright.
